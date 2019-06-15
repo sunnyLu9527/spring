@@ -29,6 +29,20 @@ import org.springframework.beans.factory.support.BeanNameGenerator;
 import org.springframework.context.annotation.Import;
 
 /**
+ *
+ * spring bean实例化之前
+ * @MapperScan主要做了三个事情
+ * 1.扫描出所有的mapper所对应的BeanDefinition
+ * 2.把mapper变成FactoryBean，MapperFactoryBean的BeanDefinition
+ * 3.为BeanDefinition添加一个构造方法的值，因为mybatis的MapperFactoryBean有一个有参数构造方法，
+ * spring在实例化这个对象的时候需要一个构造方法的值，这个值是一个class，后面spring在实例化过程中根据这个class返回我们的代理对象
+ *
+ * spring bean实例化之中和之后的工作
+ * mybatis主要利用spring的初始方法扩展点来完成对mapper信息的初始化，比如sql语句的初始化，这里的spring扩展点主要就是afterPropertiesSet，
+ * 就是利用MapperFactoryBean去实现InitializingBean，由于MapperFactoryBean是一个factoryBean，我们理解为就是一个mapper，所以可以理解为他
+ * 就是自己获得自己的信息，然后把信息缓存起来，缓存到map中
+ * @see org.apache.ibatis.session.Configuration#mappedStatements
+ *
  * Use this annotation to register MyBatis mapper interfaces when using Java
  * Config. It performs when same work as {@link MapperScannerConfigurer} via
  * {@link MapperScannerRegistrar}.
@@ -111,6 +125,7 @@ public @interface MapperScan {
   Class<? extends BeanNameGenerator> nameGenerator() default BeanNameGenerator.class;
 
   /**
+   * 有指定注解的接口将会被扫描
    * This property specifies the annotation that the scanner will search for.
    * <p>
    * The scanner will register all interfaces in the base package that also have
@@ -123,6 +138,7 @@ public @interface MapperScan {
   Class<? extends Annotation> annotationClass() default Annotation.class;
 
   /**
+   * 继承了指定的父类接口的接口将会被扫描
    * This property specifies the parent that the scanner will search for.
    * <p>
    * The scanner will register all interfaces in the base package that also have

@@ -19,11 +19,19 @@ import static org.springframework.util.Assert.notNull;
 
 import org.apache.ibatis.executor.ErrorContext;
 import org.apache.ibatis.session.Configuration;
+import org.apache.ibatis.session.ExecutorType;
+import org.apache.ibatis.session.SqlSession;
+import org.apache.ibatis.session.SqlSessionFactory;
 import org.mybatis.spring.SqlSessionTemplate;
 import org.mybatis.spring.support.SqlSessionDaoSupport;
 import org.springframework.beans.factory.FactoryBean;
+import org.springframework.dao.support.PersistenceExceptionTranslator;
+
+import java.util.Set;
 
 /**
+ * mybatis-spring中每一个Mapper对应一个MapperFactoryBean，以mapperInterface区分
+ * @see #mapperInterface
  * BeanFactory that enables injection of MyBatis mapper interfaces. It can be set up with a
  * SqlSessionFactory or a pre-configured SqlSessionTemplate.
  * <p>
@@ -53,6 +61,7 @@ import org.springframework.beans.factory.FactoryBean;
  */
 public class MapperFactoryBean<T> extends SqlSessionDaoSupport implements FactoryBean<T> {
 
+  //顾名思义，当前Mapper的具体接口类型，区分不同的Mapper
   private Class<T> mapperInterface;
 
   private boolean addToConfig = true;
@@ -60,12 +69,19 @@ public class MapperFactoryBean<T> extends SqlSessionDaoSupport implements Factor
   public MapperFactoryBean() {
     //intentionally empty 
   }
-  
+
+  /**
+   * 这一步的构造参数实例化是在设置BeanDefinition的时候预先设置好的
+   * @see ClassPathMapperScanner#processBeanDefinitions(Set)
+   * @param mapperInterface
+   */
   public MapperFactoryBean(Class<T> mapperInterface) {
     this.mapperInterface = mapperInterface;
   }
 
   /**
+   * 这个是父类初始化方法中被实现的接口，意味着在MapperFactoryBean实例化的时候就会调用
+   *  @see org.springframework.dao.support.DaoSupport
    * {@inheritDoc}
    */
   @Override
@@ -77,6 +93,15 @@ public class MapperFactoryBean<T> extends SqlSessionDaoSupport implements Factor
     Configuration configuration = getSqlSession().getConfiguration();
     if (this.addToConfig && !configuration.hasMapper(this.mapperInterface)) {
       try {
+        /**
+         * 这一步往Configuration中的MapperRegistry中的一个map中添加了当前Mapper的代理类工厂
+         * @see Configuration#mapperRegistry
+         * @see org.apache.ibatis.binding.MapperRegistry#knownMappers
+         * 这个时候Mapper其实还没生成，只是生成了一个Mapper的代理类工厂
+         * @see org.apache.ibatis.binding.MapperProxyFactory
+         * 真正的生成Mapper代理类是get的时候
+         * @see #getObject()
+         */
         configuration.addMapper(this.mapperInterface);
       } catch (Exception e) {
         logger.error("Error while adding the mapper '" + this.mapperInterface + "' to configuration.", e);
@@ -88,6 +113,11 @@ public class MapperFactoryBean<T> extends SqlSessionDaoSupport implements Factor
   }
 
   /**
+   * 这里通过当前Mapper获取代理类工厂MapperProxyFactory通过其newInstance方法实际生成的是Mapper的代理类(通过jdk动态代理实现，MapperProxy是这个实现了InvocationHandler，就是这个Mapper的具体增强逻辑)
+   * @see org.apache.ibatis.binding.MapperProxyFactory#newInstance(SqlSession)
+   * @see org.apache.ibatis.binding.MapperProxy
+   * 这是mybatis单独使用的时候的一次代理，当与spring整合后，会进行第二次代理，对SqlSessionTemplate的代理
+   * @see org.mybatis.spring.SqlSessionTemplate#SqlSessionTemplate(SqlSessionFactory, ExecutorType, PersistenceExceptionTranslator)
    * {@inheritDoc}
    */
   @Override

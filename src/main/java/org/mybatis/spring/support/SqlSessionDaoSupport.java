@@ -22,6 +22,8 @@ import org.apache.ibatis.session.SqlSessionFactory;
 import org.mybatis.spring.SqlSessionTemplate;
 import org.springframework.dao.support.DaoSupport;
 
+import java.util.Set;
+
 /**
  * Convenient super class for MyBatis SqlSession data access objects.
  * It gives you access to the template which can then be used to execute SQL methods.
@@ -42,7 +44,11 @@ public abstract class SqlSessionDaoSupport extends DaoSupport {
   private SqlSessionTemplate sqlSessionTemplate;
 
   /**
+   * 这里参数中的SqlSessionFactory是通过设置自动装配类型为按类型装配来的
+   * 会通过set方法中的参数类型自动装配
+   * @see org.mybatis.spring.mapper.ClassPathMapperScanner#processBeanDefinitions(Set)
    * Set MyBatis SqlSessionFactory to be used by this DAO.
+   * 为给定的sqlSessionFactory创建SqlSessionTemplate，这里可以发现如果原先的SqlSessionTemplate中的sqlSessionFactory与给定的不匹配，则会被替换
    * Will automatically create SqlSessionTemplate for the given SqlSessionFactory.
    *
    * @param sqlSessionFactory a factory of SqlSession
@@ -78,6 +84,9 @@ public abstract class SqlSessionDaoSupport extends DaoSupport {
 
 
   /**
+   * 这里参数中的SqlSessionTemplate是通过设置自动装配类型为按类型装配来的
+   * 会通过set方法中的参数类型自动装配
+   * @see org.mybatis.spring.mapper.ClassPathMapperScanner#processBeanDefinitions(Set)
    * Set the SqlSessionTemplate for this DAO explicitly,
    * as an alternative to specifying a SqlSessionFactory.
    *
@@ -116,6 +125,8 @@ public abstract class SqlSessionDaoSupport extends DaoSupport {
   }
 
   /**
+   *  这个是父类初始化方法中被实现的接口，意味着在MapperFactoryBean实例化的时候就会调用
+   *  @see org.springframework.dao.support.DaoSupport
    * {@inheritDoc}
    */
   @Override

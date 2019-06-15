@@ -109,6 +109,7 @@ public class ClassPathMapperScanner extends ClassPathBeanDefinitionScanner {
 
 
   /**
+   * 根据配置的annotationClass和markerInterface添加过滤器
    * Configures parent scanner to search for the right interfaces. It can search
    * for all interfaces or just for those that extends a markerInterface or/and
    * those annotated with the annotationClass
@@ -146,12 +147,16 @@ public class ClassPathMapperScanner extends ClassPathBeanDefinitionScanner {
   }
 
   /**
+   * 1.扫描到Mapper
+   * 2.注册成为BeanDefinition
+   * 3.将BeanDefinition的类型设置成MapperFactoryBean
    * Calls the parent search that will search and register all the candidates.
    * Then the registered objects are post processed to set them as
    * MapperFactoryBeans
    */
   @Override
   public Set<BeanDefinitionHolder> doScan(String... basePackages) {
+    //将所有mapper注册成bd并返回
     Set<BeanDefinitionHolder> beanDefinitions = super.doScan(basePackages);
 
     if (beanDefinitions.isEmpty()) {
@@ -163,6 +168,10 @@ public class ClassPathMapperScanner extends ClassPathBeanDefinitionScanner {
     return beanDefinitions;
   }
 
+  /**
+   * 处理BeanDefinition
+   * @param beanDefinitions
+   */
   private void processBeanDefinitions(Set<BeanDefinitionHolder> beanDefinitions) {
     GenericBeanDefinition definition;
     for (BeanDefinitionHolder holder : beanDefinitions) {
@@ -173,7 +182,14 @@ public class ClassPathMapperScanner extends ClassPathBeanDefinitionScanner {
 
       // the mapper interface is the original class of the bean
       // but, the actual class of the bean is MapperFactoryBean
+      /**
+       * 设置该BeanDefinition的构造方法参数的class类型
+       * 下一步可以知道这个BeanDefinition的类型设置为了MapperFactoryBean,所以这一步的设置实际上就是为了给MapperFactoryBean的实例化提供具体的参数类型，即mapperInterface
+       * @see MapperFactoryBean#MapperFactoryBean(Class)
+       * @see MapperFactoryBean#mapperInterface
+       */
       definition.getConstructorArgumentValues().addGenericArgumentValue(beanClassName); // issue #59
+      //将beanDefinition的实际类设置成MapperFactoryBean
       definition.setBeanClass(this.mapperFactoryBean.getClass());
 
       definition.getPropertyValues().add("addToConfig", this.addToConfig);
@@ -187,6 +203,7 @@ public class ClassPathMapperScanner extends ClassPathBeanDefinitionScanner {
         explicitFactoryUsed = true;
       }
 
+      //添加sqlSessionTemplate属性
       if (StringUtils.hasText(this.sqlSessionTemplateBeanName)) {
         if (explicitFactoryUsed) {
           LOGGER.warn(() -> "Cannot use both: sqlSessionTemplate and sqlSessionFactory together. sqlSessionFactory is ignored.");
@@ -201,6 +218,7 @@ public class ClassPathMapperScanner extends ClassPathBeanDefinitionScanner {
         explicitFactoryUsed = true;
       }
 
+      //设置自动装配类型为按类型装配 这里很重要，因为可以自动注入SqlSessionTemplate
       if (!explicitFactoryUsed) {
         LOGGER.debug(() -> "Enabling autowire by type for MapperFactoryBean with name '" + holder.getBeanName() + "'.");
         definition.setAutowireMode(AbstractBeanDefinition.AUTOWIRE_BY_TYPE);

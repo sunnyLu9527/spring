@@ -41,6 +41,10 @@ import org.springframework.beans.factory.DisposableBean;
 import org.springframework.dao.support.PersistenceExceptionTranslator;
 
 /**
+ *
+ * 当mybatis与spring整合后，使用SqlSessionTemplate操作crud
+ * 单独使用mybatis的时候使用DefaultSqlSession操作crud
+ * @see org.apache.ibatis.session.defaults.DefaultSqlSession
  * Thread safe, Spring managed, {@code SqlSession} that works with Spring
  * transaction management to ensure that that the actual SqlSession used is the
  * one associated with the current Spring transaction. In addition, it manages
@@ -80,6 +84,11 @@ public class SqlSessionTemplate implements SqlSession, DisposableBean {
 
   private final ExecutorType executorType;
 
+  /**
+   * 这是SqlSessionTemplate的代理对象，所有的crud操作其实都是这个代理对象完成的
+   * 其在SqlSessionTemplate的构造方法中被初始化
+   * @see #SqlSessionTemplate(SqlSessionFactory, ExecutorType, PersistenceExceptionTranslator)
+   */
   private final SqlSession sqlSessionProxy;
 
   private final PersistenceExceptionTranslator exceptionTranslator;
@@ -132,6 +141,11 @@ public class SqlSessionTemplate implements SqlSession, DisposableBean {
     this.sqlSessionFactory = sqlSessionFactory;
     this.executorType = executorType;
     this.exceptionTranslator = exceptionTranslator;
+    /**
+     * 这里为SqlSessionTemplate生成了一个代理对象
+     * 逻辑都在代理对象中处理
+     * @see SqlSessionInterceptor
+     */
     this.sqlSessionProxy = (SqlSession) newProxyInstance(
         SqlSessionFactory.class.getClassLoader(),
         new Class[] { SqlSession.class },
@@ -311,6 +325,7 @@ public class SqlSessionTemplate implements SqlSession, DisposableBean {
   }
 
   /**
+   * 定位到具体的Mapper
    * {@inheritDoc}
    */
   @Override
@@ -451,6 +466,7 @@ public class SqlSessionTemplate implements SqlSession, DisposableBean {
         throw unwrapped;
       } finally {
         if (sqlSession != null) {
+          //这里每一次执行完都关闭了sqlSession，所以mybatis的一级缓存会失效
           closeSqlSession(sqlSession, SqlSessionTemplate.this.sqlSessionFactory);
         }
       }

@@ -72,20 +72,26 @@ public class MapperScannerRegistrar implements ImportBeanDefinitionRegistrar, Re
     }
   }
 
+  /**
+   * 扫描到所有mapper
+   * 将mapper注册为类型是MapperFactoryBean的BeanDefinition
+   * @param annoAttrs
+   * @param registry
+   */
   void registerBeanDefinitions(AnnotationAttributes annoAttrs, BeanDefinitionRegistry registry) {
-
+    //得到扫描器
     ClassPathMapperScanner scanner = new ClassPathMapperScanner(registry);
 
     // this check is needed in Spring 3.1
     if (resourceLoader != null) {
       scanner.setResourceLoader(resourceLoader);
     }
-
+    //设置扫描器须要扫描的指定注解
     Class<? extends Annotation> annotationClass = annoAttrs.getClass("annotationClass");
     if (!Annotation.class.equals(annotationClass)) {
       scanner.setAnnotationClass(annotationClass);
     }
-
+    //设置扫描器须要扫描的指定父级接口
     Class<?> markerInterface = annoAttrs.getClass("markerInterface");
     if (!Class.class.equals(markerInterface)) {
       scanner.setMarkerInterface(markerInterface);
@@ -95,15 +101,18 @@ public class MapperScannerRegistrar implements ImportBeanDefinitionRegistrar, Re
     if (!BeanNameGenerator.class.equals(generatorClass)) {
       scanner.setBeanNameGenerator(BeanUtils.instantiateClass(generatorClass));
     }
-
+    //设置扫描器的FactoryBean 这里默认是MapperFactoryBean
     Class<? extends MapperFactoryBean> mapperFactoryBeanClass = annoAttrs.getClass("factoryBean");
     if (!MapperFactoryBean.class.equals(mapperFactoryBeanClass)) {
       scanner.setMapperFactoryBean(BeanUtils.instantiateClass(mapperFactoryBeanClass));
     }
 
+    //设置扫描器用到的sqlSessionTemplate  mybatis-spring
     scanner.setSqlSessionTemplateBeanName(annoAttrs.getString("sqlSessionTemplateRef"));
+    //设置扫描器用到的sqlSessionFactory  mybatis自己，不整合spring
     scanner.setSqlSessionFactoryBeanName(annoAttrs.getString("sqlSessionFactoryRef"));
 
+    //组装所有须要扫描的基础包
     List<String> basePackages = new ArrayList<>();
     basePackages.addAll(
         Arrays.stream(annoAttrs.getStringArray("value"))
@@ -120,7 +129,9 @@ public class MapperScannerRegistrar implements ImportBeanDefinitionRegistrar, Re
             .map(ClassUtils::getPackageName)
             .collect(Collectors.toList()));
 
+    //根据配置的annotationClass和markerInterface添加过滤器
     scanner.registerFilters();
+    //扫描
     scanner.doScan(StringUtils.toStringArray(basePackages));
   }
 
